@@ -1,0 +1,29 @@
+[package]
+name = "reprise"
+version = "0.1.0"
+edition = "2024"
+authors = ["Arash Afshar"]
+description = "Keyboard-first local chess analysis for Omarchy"
+license = "MIT"
+readme = "README.md"
+keywords = ["chess", "gtk", "analysis", "stockfish", "omarchy"]
+categories = ["games"]
+repository = "https://github.com/Arash-Afshar/reprise"
+
+[dependencies]
+anyhow = "1.0.104"
+async-channel = "2.5.0"
+chrono = { version = "0.4.45", features = ["serde"] }
+gio = "0.22.9"
+glib = "0.22.9"
+gtk4 = { version = "0.11.4", features = ["v4_14"] }
+resvg = "0.48.1"
+rschess = { version = "2.0.5", features = ["pgn"] }
+serde = { version = "1.0.229", features = ["derive"] }
+serde_json = "1.0.151"
+thiserror = "2.0.20"
+tiny-skia = "0.12.0"
+toml = "1.1.6"
+ureq = { version = "3.4.2", features = ["json"] }
+usvg = "0.48.1"
+

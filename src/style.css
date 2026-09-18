@@ -1,0 +1,375 @@
+/* Structural CSS — colors come from Omarchy via @define-color in theme.rs */
+
+window {
+  background-color: @reprise_bg;
+  color: @reprise_fg;
+}
+
+.shell {
+  background-color: @reprise_bg;
+}
+
+.topbar, .playbench-topbar {
+  padding-bottom: 4px;
+}
+
+.brand {
+  font-family: "Iosevka", "JetBrains Mono", monospace;
+  font-weight: 700;
+  font-size: 18px;
+  color: @reprise_accent;
+  margin-right: 18px;
+  letter-spacing: 0.04em;
+}
+
+.nav, .ghost, .primary, .queue-row, .toolbar-btn, .sync-btn {
+  background: @reprise_bg_light;
+  color: @reprise_fg;
+  border: 1px solid @reprise_muted;
+  border-radius: 0;
+  padding: 6px 12px;
+  box-shadow: none;
+  opacity: 1;
+}
+
+.nav:hover, .ghost:hover, .queue-row:hover, .toolbar-btn:hover, .sync-btn:hover {
+  background: @reprise_selection;
+  border-color: @reprise_accent;
+}
+
+.nav:disabled, .ghost:disabled, .primary:disabled,
+.queue-row:disabled, .toolbar-btn:disabled, .sync-btn:disabled,
+.nav:insensitive, .ghost:insensitive, .primary:insensitive,
+.queue-row:insensitive, .toolbar-btn:insensitive, .sync-btn:insensitive {
+  background: @reprise_bg_dark;
+  color: @reprise_fg_dark;
+  border-color: @reprise_bg_light;
+  opacity: 0.45;
+}
+
+.nav:disabled:hover, .ghost:disabled:hover, .primary:disabled:hover,
+.toolbar-btn:disabled:hover, .sync-btn:disabled:hover,
+.nav:insensitive:hover, .ghost:insensitive:hover, .primary:insensitive:hover,
+.toolbar-btn:insensitive:hover, .sync-btn:insensitive:hover {
+  background: @reprise_bg_dark;
+  border-color: @reprise_bg_light;
+  filter: none;
+}
+
+.sync-btn {
+  padding: 6px 8px;
+  min-width: 36px;
+}
+
+.primary {
+  background: @reprise_accent;
+  color: @reprise_bg;
+  border-color: @reprise_accent;
+  font-weight: 700;
+}
+
+.primary:hover {
+  filter: brightness(1.08);
+}
+
+.primary:disabled, .primary:insensitive {
+  background: @reprise_muted;
+  color: @reprise_fg_dark;
+  border-color: @reprise_muted;
+  font-weight: 700;
+  opacity: 0.45;
+}
+
+.page {
+  background-color: @reprise_bg;
+}
+
+.eyebrow {
+  font-family: "Iosevka", "JetBrains Mono", monospace;
+  font-size: 11px;
+  letter-spacing: 0.16em;
+  color: @reprise_accent;
+}
+
+.title {
+  font-family: "Iosevka", "JetBrains Mono", monospace;
+  font-size: 28px;
+  font-weight: 700;
+  color: @reprise_fg_bright;
+}
+
+.blurb, .moment {
+  font-size: 15px;
+  color: @reprise_fg_light;
+  line-height: 1.35;
+}
+
+.moment {
+  color: @reprise_fg_bright;
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.moment-detail {
+  font-size: 13px;
+  color: @reprise_fg_light;
+  line-height: 1.45;
+}
+
+.pivotal-panel {
+  background: transparent;
+  min-width: 560px;
+  max-width: 560px;
+}
+
+.pivotal-panel .moment,
+.pivotal-panel .moment-detail {
+  max-width: 560px;
+}
+
+.ply-counter {
+  font-family: "Iosevka", "JetBrains Mono", monospace;
+  font-size: 14px;
+  font-weight: 600;
+  color: @reprise_fg_light;
+  padding: 0;
+}
+
+.game-meta {
+  font-size: 13px;
+  color: @reprise_fg_light;
+  padding: 0;
+}
+
+.board-meta-row {
+  min-width: 560px;
+  max-width: 560px;
+}
+
+.playbench-controls {
+  margin-top: 0;
+}
+
+.boards-row {
+  background: transparent;
+}
+
+.main-cluster.dimmed {
+  transition: opacity 120ms ease;
+}
+
+.variation-cluster {
+  background: transparent;
+}
+
+.variation-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: @reprise_accent;
+}
+
+.variation-meta-row {
+  min-width: 560px;
+  max-width: 560px;
+}
+
+.analyzing-badge {
+  font-size: 12px;
+  font-weight: 600;
+  color: @reprise_fg_bright;
+  background: alpha(@reprise_bg_dark, 0.88);
+  border: 1px solid @reprise_bg_light;
+  border-radius: 4px;
+  padding: 4px 10px;
+}
+
+.playbench-stage {
+  background: transparent;
+}
+
+.analyze-status {
+  font-family: "Iosevka", "JetBrains Mono", monospace;
+  font-size: 13px;
+  color: @reprise_fg_light;
+  padding: 0 4px;
+}
+
+.muted, .hint {
+  color: @reprise_fg_dark;
+  font-size: 13px;
+}
+
+.row-title {
+  font-size: 15px;
+  color: @reprise_fg_bright;
+}
+
+.queue-row {
+  padding: 4px 8px;
+}
+
+.search {
+  background: @reprise_bg_light;
+  color: @reprise_fg_bright;
+  border: 1px solid @reprise_muted;
+  border-radius: 0;
+  padding: 8px 10px;
+  caret-color: @reprise_accent;
+}
+
+.library-list {
+  background: @reprise_bg_dark;
+  border: 1px solid @reprise_muted;
+}
+
+.library-list row {
+  border-bottom: 1px solid @reprise_bg_light;
+  padding: 0;
+}
+
+.library-list row:selected {
+  background: @reprise_selection;
+}
+
+.library-section {
+  font-family: "Iosevka", "JetBrains Mono", monospace;
+  font-size: 11px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: @reprise_accent;
+}
+
+.library-section-row {
+  background: @reprise_bg;
+}
+
+.library-more {
+  font-family: "Iosevka", "JetBrains Mono", monospace;
+  font-size: 13px;
+  color: @reprise_fg_dark;
+}
+
+.library-analyzing {
+  color: @reprise_accent;
+}
+
+.library-board-pane {
+  background: @reprise_bg;
+}
+
+.library-hint {
+  font-family: "Iosevka", "JetBrains Mono", monospace;
+  font-size: 12px;
+  color: @reprise_fg_dark;
+}
+
+.board {
+  background: transparent;
+  border: none;
+}
+
+.playbench {
+  background-color: @reprise_bg;
+}
+
+.progress-page .progress-section {
+  font-family: "Iosevka", "JetBrains Mono", monospace;
+  font-size: 11px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: @reprise_accent;
+  margin-top: 8px;
+}
+
+.elo-chart {
+  background: @reprise_bg_dark;
+  border: 1px solid @reprise_bg_light;
+  min-height: 240px;
+}
+
+.error-type-row {
+  font-size: 15px;
+  color: @reprise_fg_bright;
+  padding: 2px 0;
+}
+
+/* In-app keybindings overlay */
+.keys-help-root {
+  background: transparent;
+}
+
+.keys-help-dim {
+  background-color: @reprise_bg_darker;
+  opacity: 0.85;
+}
+
+.keys-help-card {
+  background-color: @reprise_bg;
+  border: 1px solid @reprise_muted;
+  padding: 18px 22px;
+  min-width: 420px;
+}
+
+.keys-help-title {
+  font-family: "Iosevka", "JetBrains Mono", monospace;
+  font-size: 14px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: @reprise_accent;
+  margin-bottom: 4px;
+}
+
+.keys-help-list {
+  background: transparent;
+}
+
+.keys-help-row {
+  font-family: "Iosevka", "JetBrains Mono", monospace;
+  font-size: 14px;
+  color: @reprise_fg_bright;
+  padding: 6px 0;
+}
+
+.keys-help-hint {
+  font-family: "Iosevka", "JetBrains Mono", monospace;
+  font-size: 12px;
+  color: @reprise_fg_dark;
+  margin-top: 6px;
+}
+
+/* In-app modal overlays (username / notices) — same family as help */
+.modal-root {
+  background: transparent;
+}
+
+.modal-dim {
+  background-color: @reprise_bg_darker;
+  opacity: 0.85;
+}
+
+.modal-card {
+  background-color: @reprise_bg;
+  border: 1px solid @reprise_muted;
+  padding: 18px 22px;
+  min-width: 420px;
+  max-width: 520px;
+}
+
+.modal-title {
+  font-family: "Iosevka", "JetBrains Mono", monospace;
+  font-size: 14px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: @reprise_accent;
+  margin-bottom: 4px;
+}
+
+.modal-body {
+  font-size: 14px;
+  color: @reprise_fg_bright;
+  line-height: 1.4;
+}
+
+.modal-entry {
+  margin-top: 4px;
+}

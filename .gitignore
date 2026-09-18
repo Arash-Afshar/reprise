@@ -1,0 +1,21 @@
+# Build
+/target/
+
+# Engine binary (fetch with scripts/fetch-stockfish.js — GPLv3, not part of this MIT tree)
+/bin/stockfish
+/bin/stockfish-*
+/bin/*.tar
+
+# Personal game library (created at runtime / via sync)
+/data/db.json
+/data/db-index.json
+/data/*.json.tmp
+/data/*.log
+/data/backups/
+/data/*.aside*
+/data/*.tmp
+
+# Editor / OS
+.cursor/
+*.log
+.DS_Store
