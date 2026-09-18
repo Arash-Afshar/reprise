@@ -33,8 +33,8 @@ pub(crate) const PLAYBENCH: &[Binding] = &[
         action: "First / last ply",
     },
     Binding {
-        chord: "g<digit>",
-        action: "Jump to ply <digit>",
+        chord: "<digits>G",
+        action: "Jump to ply",
     },
     Binding {
         chord: "a",

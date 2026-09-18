@@ -674,41 +674,64 @@ impl Playbench {
             })
         };
 
-        // g then digits (e.g. g10) jumps to a ply after a short settle delay.
+        // Digits then G (e.g. 10G) jumps to a ply — vim-style. Bare G → last ply.
         let goto_ply = Rc::new(RefCell::new(GotoPlyInput::default()));
-        let arm_goto_ply = {
-            let goto_ply = goto_ply.clone();
-            let show_ply = show_ply.clone();
-            Rc::new(move || {
-                {
-                    let mut g = goto_ply.borrow_mut();
-                    if let Some(id) = g.timer.take() {
-                        id.remove();
-                    }
-                    g.digits = Some(String::new());
-                }
-                schedule_goto_ply_commit(goto_ply.clone(), show_ply.clone());
-            })
-        };
         let push_goto_digit = {
             let goto_ply = goto_ply.clone();
-            let show_ply = show_ply.clone();
             Rc::new(move |digit: char| {
-                {
+                let mut g = goto_ply.borrow_mut();
+                if let Some(id) = g.timer.take() {
+                    id.remove();
+                }
+                let buf = g.digits.get_or_insert_with(String::new);
+                if buf.len() >= 4 {
+                    return true;
+                }
+                buf.push(digit);
+                drop(g);
+                // Drop a stale count if G never arrives.
+                let goto_ply_timer = goto_ply.clone();
+                let id = glib::timeout_add_local_once(
+                    Duration::from_millis(GOTO_PLY_CANCEL_MS),
+                    move || {
+                        let mut g = goto_ply_timer.borrow_mut();
+                        g.timer = None;
+                        g.digits = None;
+                    },
+                );
+                goto_ply.borrow_mut().timer = Some(id);
+                true
+            })
+        };
+        let commit_goto_ply = {
+            let goto_ply = goto_ply.clone();
+            let show_ply = show_ply.clone();
+            let state = state.clone();
+            Rc::new(move || {
+                let digits = {
                     let mut g = goto_ply.borrow_mut();
-                    let Some(buf) = g.digits.as_mut() else {
-                        return false;
-                    };
-                    if buf.len() >= 4 {
-                        return true;
-                    }
-                    buf.push(digit);
                     if let Some(id) = g.timer.take() {
                         id.remove();
                     }
+                    g.digits.take()
+                };
+                match digits {
+                    Some(digits) if !digits.is_empty() => {
+                        if let Ok(ply) = digits.parse::<usize>() {
+                            show_ply(ply);
+                        }
+                    }
+                    _ => {
+                        let last = {
+                            let borrow = state.borrow();
+                            borrow
+                                .as_ref()
+                                .map(|pb| pb.fens.len().saturating_sub(1))
+                                .unwrap_or(0)
+                        };
+                        show_ply(last);
+                    }
                 }
-                schedule_goto_ply_commit(goto_ply.clone(), show_ply.clone());
-                true
             })
         };
         let cancel_goto_ply = {
@@ -754,8 +777,8 @@ impl Playbench {
             let exit_variation_fn = exit_variation_fn.clone();
             let show_variation_ply = show_variation_ply.clone();
             let view_chord = view_chord.clone();
-            let arm_goto_ply = arm_goto_ply.clone();
             let push_goto_digit = push_goto_digit.clone();
+            let commit_goto_ply = commit_goto_ply.clone();
             let cancel_goto_ply = cancel_goto_ply.clone();
             let goto_ply = goto_ply.clone();
             let request_analyze = request_analyze.clone();
@@ -1013,9 +1036,21 @@ impl Playbench {
                 }
 
                 if let Some(digit) = key_to_digit(key) {
-                    if push_goto_digit(digit) {
-                        return glib::Propagation::Stop;
+                    push_goto_digit(digit);
+                    return glib::Propagation::Stop;
+                }
+
+                // `<digits>G` commits; bare `G` → last ply (vim). Esc clears a count.
+                if key == Key::G || key == Key::g {
+                    let has_count = goto_ply
+                        .borrow()
+                        .digits
+                        .as_ref()
+                        .is_some_and(|d| !d.is_empty());
+                    if has_count || key == Key::G {
+                        commit_goto_ply();
                     }
+                    return glib::Propagation::Stop;
                 }
 
                 let goto_armed = goto_ply.borrow().digits.is_some();
@@ -1024,10 +1059,11 @@ impl Playbench {
                         cancel_goto_ply();
                         return glib::Propagation::Stop;
                     }
-                    // Non-digit cancels an unfinished g-sequence.
-                    if key != Key::g && key != Key::G {
-                        cancel_goto_ply();
+                    // Shift (for capital G) must not wipe the count.
+                    if is_modifier_key(key) {
+                        return glib::Propagation::Stop;
                     }
+                    cancel_goto_ply();
                 }
 
                 match key {
@@ -1063,7 +1099,6 @@ impl Playbench {
                         glib::Propagation::Stop
                     }
                     Key::a | Key::A => {
-                        cancel_goto_ply();
                         arm_analyze_chord(
                             analyze_chord.clone(),
                             request_analyze.clone(),
@@ -1090,10 +1125,6 @@ impl Playbench {
                     }
                     Key::v | Key::V => {
                         view_chord.set(true);
-                        glib::Propagation::Stop
-                    }
-                    Key::g | Key::G => {
-                        arm_goto_ply();
                         glib::Propagation::Stop
                     }
                     Key::question => {
@@ -1740,7 +1771,7 @@ pub(crate) fn game_meta_line(game: &Game) -> String {
 
 #[derive(Default)]
 struct GotoPlyInput {
-    /// `None` = idle. `Some("")` = waiting for digits. `Some("10")` = digits buffered.
+    /// Buffered count for `<digits>G`. `None` = idle.
     digits: Option<String>,
     timer: Option<glib::SourceId>,
 }
@@ -1751,7 +1782,7 @@ struct AnalyzeChord {
     timer: Option<glib::SourceId>,
 }
 
-const GOTO_PLY_SETTLE_MS: u64 = 450;
+const GOTO_PLY_CANCEL_MS: u64 = 1500;
 const ANALYZE_CHORD_MS: u64 = 400;
 
 fn clear_analyze_chord(chord: &Rc<RefCell<AnalyzeChord>>) {
@@ -1785,29 +1816,6 @@ fn arm_analyze_chord(chord: Rc<RefCell<AnalyzeChord>>, request_analyze: Rc<dyn F
     chord.borrow_mut().timer = Some(id);
 }
 
-fn schedule_goto_ply_commit(goto_ply: Rc<RefCell<GotoPlyInput>>, show_ply: Rc<dyn Fn(usize)>) {
-    let id = glib::timeout_add_local_once(Duration::from_millis(GOTO_PLY_SETTLE_MS), {
-        let goto_ply = goto_ply.clone();
-        move || {
-            let digits = {
-                let mut g = goto_ply.borrow_mut();
-                g.timer = None;
-                g.digits.take()
-            };
-            let Some(digits) = digits else {
-                return;
-            };
-            if digits.is_empty() {
-                return;
-            }
-            if let Ok(ply) = digits.parse::<usize>() {
-                show_ply(ply);
-            }
-        }
-    });
-    goto_ply.borrow_mut().timer = Some(id);
-}
-
 fn key_to_digit(key: gtk4::gdk::Key) -> Option<char> {
     use gtk4::gdk::Key;
     match key {
@@ -1823,6 +1831,30 @@ fn key_to_digit(key: gtk4::gdk::Key) -> Option<char> {
         Key::_9 | Key::KP_9 => Some('9'),
         _ => None,
     }
+}
+
+fn is_modifier_key(key: gtk4::gdk::Key) -> bool {
+    use gtk4::gdk::Key;
+    matches!(
+        key,
+        Key::Shift_L
+            | Key::Shift_R
+            | Key::Control_L
+            | Key::Control_R
+            | Key::Alt_L
+            | Key::Alt_R
+            | Key::Meta_L
+            | Key::Meta_R
+            | Key::Super_L
+            | Key::Super_R
+            | Key::Hyper_L
+            | Key::Hyper_R
+            | Key::Caps_Lock
+            | Key::Num_Lock
+            | Key::Scroll_Lock
+            | Key::ISO_Level3_Shift
+            | Key::ISO_Level5_Shift
+    )
 }
 
 
