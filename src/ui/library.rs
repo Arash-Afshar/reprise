@@ -383,14 +383,44 @@ impl LibraryPage {
                     return glib::Propagation::Stop;
                 }
 
-                if WidgetExt::is_visible(&search) && search.has_focus() {
-                    if key == Key::Escape {
-                        search.set_text("");
-                        search.set_visible(false);
-                        list.grab_focus();
-                        return glib::Propagation::Stop;
+                // Filter open: letters go to the entry (inner GtkText focus is
+                // unreliable under Capture). Keep Esc / Enter / / as actions.
+                if WidgetExt::is_visible(&search) {
+                    match key {
+                        Key::Escape => {
+                            search.set_text("");
+                            search.set_visible(false);
+                            list.grab_focus();
+                            return glib::Propagation::Stop;
+                        }
+                        Key::Return | Key::KP_Enter => {
+                            if let Some(row) = list.selected_row() {
+                                let idx = row.index() as usize;
+                                let kind = model.borrow().rows.get(idx).cloned();
+                                if let Some(Row::More { .. }) = kind {
+                                    load_more(
+                                        &library,
+                                        &model,
+                                        &list,
+                                        &preview,
+                                        &game_meta,
+                                        &ply_label,
+                                        &tail_cache,
+                                        &analyzing,
+                                        &row_spinners,
+                                    );
+                                } else {
+                                    activate_row(&library, &model, &on_open, idx);
+                                }
+                            }
+                            return glib::Propagation::Stop;
+                        }
+                        Key::slash => {
+                            search.grab_focus();
+                            return glib::Propagation::Stop;
+                        }
+                        _ => return glib::Propagation::Proceed,
                     }
-                    return glib::Propagation::Proceed;
                 }
 
                 match key {
