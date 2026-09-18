@@ -18,6 +18,7 @@ use crate::theme::ThemeColors;
 use crate::ui::board::BoardView;
 use crate::ui::keys_help;
 use crate::ui::modal;
+use crate::weekly_review;
 
 struct AnalysisLoadMsg {
     load_gen: u64,
@@ -786,7 +787,104 @@ impl Playbench {
                     let prompt = agent_prompt(game, pb);
                     drop(borrow);
                     drop(lib);
-                    launch_default_agent(&prompt);
+                    weekly_review::launch_default_agent(&prompt);
+                })
+            };
+            let send_weekly_review = {
+                let library = library.clone();
+                let analyzing_badge = analyzing_badge.clone();
+                let status_gen = status_gen.clone();
+                let status_timer = status_timer.clone();
+                Rc::new(move || {
+                    // Snapshot path + in-memory games (PGN/meta) for the worker.
+                    let lib = library.borrow().clone();
+                    if weekly_review::games_this_week(&lib).is_empty() {
+                        // Ephemeral status without Playbench method (we're in a closure).
+                        if let Some(id) = status_timer.borrow_mut().take() {
+                            id.remove();
+                        }
+                        let token = status_gen.get().wrapping_add(1);
+                        status_gen.set(token);
+                        analyzing_badge.set_text("No games this week");
+                        analyzing_badge.set_visible(true);
+                        let badge = analyzing_badge.clone();
+                        let status_gen = status_gen.clone();
+                        let timer_slot = status_timer.clone();
+                        let id = glib::timeout_add_local_once(Duration::from_millis(2500), move || {
+                            *timer_slot.borrow_mut() = None;
+                            if status_gen.get() == token {
+                                badge.set_visible(false);
+                            }
+                        });
+                        *status_timer.borrow_mut() = Some(id);
+                        return;
+                    }
+                    if let Some(id) = status_timer.borrow_mut().take() {
+                        id.remove();
+                    }
+                    let token = status_gen.get().wrapping_add(1);
+                    status_gen.set(token);
+                    analyzing_badge.set_text("Packing weekly review…");
+                    analyzing_badge.set_visible(true);
+
+                    let (tx, rx) = async_channel::bounded::<Result<weekly_review::WeeklyReviewPack, String>>(1);
+                    std::thread::spawn(move || {
+                        let result = weekly_review::build_pack(&lib)
+                            .map_err(|e| format!("{e:#}"));
+                        let _ = tx.send_blocking(result);
+                    });
+                    let analyzing_badge = analyzing_badge.clone();
+                    let status_gen = status_gen.clone();
+                    let status_timer = status_timer.clone();
+                    glib::spawn_future_local(async move {
+                        let result = rx.recv().await;
+                        if status_gen.get() != token {
+                            return;
+                        }
+                        match result {
+                            Ok(Ok(pack)) => {
+                                analyzing_badge.set_text(&format!(
+                                    "Weekly review · {}/{} · → {}",
+                                    pack.analyzed_count,
+                                    pack.game_count,
+                                    pack.review_relpath
+                                ));
+                                weekly_review::launch_default_agent(&pack.prompt);
+                                let badge = analyzing_badge.clone();
+                                let status_gen = status_gen.clone();
+                                let timer_slot = status_timer.clone();
+                                let done_token = token;
+                                let id = glib::timeout_add_local_once(
+                                    Duration::from_millis(3000),
+                                    move || {
+                                        *timer_slot.borrow_mut() = None;
+                                        if status_gen.get() == done_token {
+                                            badge.set_visible(false);
+                                        }
+                                    },
+                                );
+                                *status_timer.borrow_mut() = Some(id);
+                            }
+                            Ok(Err(err)) => {
+                                eprintln!("reprise: weekly review failed: {err}");
+                                analyzing_badge.set_text("Weekly review failed");
+                                let badge = analyzing_badge.clone();
+                                let status_gen = status_gen.clone();
+                                let timer_slot = status_timer.clone();
+                                let id = glib::timeout_add_local_once(
+                                    Duration::from_millis(4000),
+                                    move || {
+                                        *timer_slot.borrow_mut() = None;
+                                        if status_gen.get() == token {
+                                            badge.set_visible(false);
+                                        }
+                                    },
+                                );
+                                *status_timer.borrow_mut() = Some(id);
+                            }
+                            Err(_) => {}
+                        }
+                    });
                 })
             };
             move |_, key, _, mods| {
@@ -813,6 +911,10 @@ impl Playbench {
                 let ctrl = mods.contains(ModifierType::CONTROL_MASK);
                 if ctrl && (key == Key::a || key == Key::A) {
                     send_to_agent();
+                    return glib::Propagation::Stop;
+                }
+                if ctrl && (key == Key::e || key == Key::E) {
+                    send_weekly_review();
                     return glib::Propagation::Stop;
                 }
                 // Ignore other plain letter chords while Ctrl is held.
@@ -2127,19 +2229,4 @@ fn agent_prompt(game: &Game, pb: &Playback) -> String {
         }
     }
     prompt
-}
-
-/// Hand a prompt to Omarchy's default agent (`omarchy-agent --prompt`), like crash diagnosis.
-fn launch_default_agent(prompt: &str) {
-    match std::process::Command::new("omarchy-agent")
-        .arg("--prompt")
-        .arg(prompt)
-        .spawn()
-    {
-        Ok(_) => eprintln!("reprise: handed position to omarchy-agent"),
-        Err(err) => eprintln!(
-            "reprise: failed to launch omarchy-agent ({err}). \
-             Set a default with: omarchy default agent <name>"
-        ),
-    }
 }

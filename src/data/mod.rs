@@ -4,7 +4,8 @@ mod stats;
 
 pub use db::{
     append_games_to_db, default_db_path, empty_library, ensure_library_files, index_path_for,
-    load_game_analysis, load_library, persist_reviewed_flag_async, save_index, Library,
+    load_analyses_for, load_game_analysis, load_library, persist_reviewed_flag_async, save_index,
+    Library,
 };
 pub use models::*;
 pub use stats::{

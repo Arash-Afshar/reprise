@@ -303,42 +303,67 @@ pub fn load_game_analysis(
     id: &str,
     game_type: &str,
 ) -> Result<Option<super::models::GameAnalysis>> {
+    let key = (id.to_string(), game_type.to_string());
+    let mut map = load_analyses_for(db_path, &[key])?;
+    Ok(map.remove(&(id.to_string(), game_type.to_string())))
+}
+
+/// One disk pass: deserialize analysis only for the requested `(id, gameType)` keys.
+pub fn load_analyses_for(
+    db_path: &Path,
+    keys: &[(String, String)],
+) -> Result<std::collections::HashMap<(String, String), super::models::GameAnalysis>> {
+    use std::collections::{HashMap, HashSet};
+
+    let mut out = HashMap::new();
+    if keys.is_empty() {
+        return Ok(out);
+    }
+    let want: HashSet<(&str, &str)> = keys
+        .iter()
+        .map(|(id, gt)| (id.as_str(), gt.as_str()))
+        .collect();
+
     let t0 = Instant::now();
     let raw = std::fs::read_to_string(db_path)
         .with_context(|| format!("reading {}", db_path.display()))?;
     let t_read = t0.elapsed();
     let root: serde_json::Value =
         serde_json::from_str(&raw).with_context(|| format!("parse {}", db_path.display()))?;
-    let t_parse = t0.elapsed();
     let Some(games) = root.get("games").and_then(|g| g.as_array()) else {
-        return Ok(None);
+        return Ok(out);
     };
+
     for g in games {
+        if out.len() == want.len() {
+            break;
+        }
         let gid = g.get("id").and_then(|v| v.as_str()).unwrap_or("");
         let gt = g.get("gameType").and_then(|v| v.as_str()).unwrap_or("");
-        if gid == id && gt == game_type {
-            let Some(analysis_val) = g.get("analysis") else {
-                eprintln!(
-                    "reprise: load analysis {id} — none (read {:.2?} parse {:.2?})",
-                    t_read,
-                    t_parse.saturating_sub(t_read)
-                );
-                return Ok(None);
-            };
-            let analysis: super::models::GameAnalysis =
-                serde_json::from_value(analysis_val.clone())
-                    .context("deserialize game analysis")?;
-            eprintln!(
-                "reprise: load analysis {id} {} moves (read {:.2?} parse {:.2?} total {:.2?})",
-                analysis.moves.len(),
-                t_read,
-                t_parse.saturating_sub(t_read),
-                t0.elapsed()
-            );
-            return Ok(Some(analysis));
+        if !want.contains(&(gid, gt)) {
+            continue;
+        }
+        let Some(analysis_val) = g.get("analysis") else {
+            continue;
+        };
+        match serde_json::from_value::<super::models::GameAnalysis>(analysis_val.clone()) {
+            Ok(analysis) if !analysis.moves.is_empty() => {
+                out.insert((gid.to_string(), gt.to_string()), analysis);
+            }
+            Ok(_) => {}
+            Err(err) => {
+                eprintln!("reprise: skip analysis {gid}: {err:#}");
+            }
         }
     }
-    Ok(None)
+    eprintln!(
+        "reprise: load analyses {}/{} (read {:.2?} total {:.2?})",
+        out.len(),
+        keys.len(),
+        t_read,
+        t0.elapsed()
+    );
+    Ok(out)
 }
 
 impl Library {

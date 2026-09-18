@@ -61,6 +61,10 @@ pub(crate) const PLAYBENCH: &[Binding] = &[
         action: "Ask default agent",
     },
     Binding {
+        chord: "Ctrl+E",
+        action: "Weekly review → agent",
+    },
+    Binding {
         chord: "?",
         action: "Keybindings",
     },

@@ -6,6 +6,7 @@ mod engine;
 mod sync;
 mod theme;
 mod ui;
+mod weekly_review;
 
 use gtk4::prelude::*;
 
